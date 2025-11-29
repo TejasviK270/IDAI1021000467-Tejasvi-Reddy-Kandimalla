@@ -1,12 +1,10 @@
-# app.py
 import streamlit as st
 import datetime as dt
 import random
 import math
 import struct
-from typing import List, Dict
 
-# Optional: Turtle graphics for local use (will not display on Streamlit Cloud)
+# Optional: Turtle graphics (local only)
 try:
     import turtle
     TURTLE_AVAILABLE = True
@@ -22,14 +20,14 @@ st.markdown("""
 <style>
     html, body, [class*="css"] {
         font-size: 18px;
-        background-color: #F0F8FF; /* soft blue */
-        color: #004d40; /* teal-ish green */
+        background-color: #F0F8FF;
+        color: #004d40;
     }
     h1, h2, h3 {
-        color: #00695C; /* deep green */
+        color: #00695C;
     }
     .stButton>button {
-        background-color: #4CAF50; /* green */
+        background-color: #4CAF50;
         color: white;
         font-size: 16px;
         border-radius: 8px;
@@ -46,13 +44,6 @@ st.markdown("""
     .pill-green { background: #2E7D32; }
     .pill-yellow { background: #FBC02D; color: #1a1a1a; }
     .pill-red { background: #D32F2F; }
-    .card {
-        background: #ffffff;
-        border: 1px solid #cfe8ff;
-        border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 8px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -85,10 +76,8 @@ QUOTES = [
 # Session state
 # ------------------------------
 if "schedules" not in st.session_state:
-    # schedules: list of {name, days_of_week: [str], times: [time], start_date: date}
-    st.session_state.schedules: List[Dict] = []
+    st.session_state.schedules = []
 if "taken_events" not in st.session_state:
-    # taken_events keys: f"{date.isoformat()}|{name}|{time.strftime('%H:%M')}"
     st.session_state.taken_events = set()
 if "reminder_minutes" not in st.session_state:
     st.session_state.reminder_minutes = 15
@@ -106,14 +95,10 @@ def draw_trophy():
     t = turtle.Turtle()
     t.speed(3)
     t.pensize(3)
-
-    # Cup
     t.color("orange")
     t.begin_fill()
     t.circle(40)
     t.end_fill()
-
-    # Base
     t.penup()
     t.goto(-20, -60)
     t.pendown()
@@ -124,33 +109,25 @@ def draw_trophy():
         t.forward(20)
         t.right(90)
     t.end_fill()
-
-    # Text
     t.penup()
     t.goto(0, -100)
     t.write("🏆 Great Adherence!", align="center", font=("Arial", 14, "bold"))
     t.hideturtle()
 
 # ------------------------------
-# Audio: generate a simple beep (PCM WAV bytes)
+# Audio beep
 # ------------------------------
 def generate_beep(duration_sec=0.25, freq_hz=880, sample_rate=44100, volume=0.4) -> bytes:
     n_samples = int(duration_sec * sample_rate)
     data = bytearray()
-    # WAV header
     def _le32(x): return struct.pack("<I", x)
     def _le16(x): return struct.pack("<H", x)
-
     byte_rate = sample_rate * 2
     block_align = 2
     data_chunk_size = n_samples * 2
-    # RIFF header
     header = b"RIFF" + _le32(36 + data_chunk_size) + b"WAVE"
-    # fmt chunk
     fmt = b"fmt " + _le32(16) + _le16(1) + _le16(1) + _le32(sample_rate) + _le32(byte_rate) + _le16(block_align) + _le16(16)
-    # data chunk header
     data_hdr = b"data" + _le32(data_chunk_size)
-    # PCM data
     for i in range(n_samples):
         t = i / sample_rate
         sample = int(32767 * volume * math.sin(2 * math.pi * freq_hz * t))
@@ -162,26 +139,21 @@ def maybe_beep():
         st.audio(generate_beep(), format="audio/wav")
 
 # ------------------------------
-# Helpers: scheduling & adherence
+# Helpers
 # ------------------------------
 def weekday_name(date_obj: dt.date) -> str:
     return DAY_ORDER[date_obj.weekday()]
 
-def occurrences_for_date(date_obj: dt.date) -> List[Dict]:
+def occurrences_for_date(date_obj: dt.date):
     wname = weekday_name(date_obj)
     occ = []
     for sch in st.session_state.schedules:
         if date_obj >= sch["start_date"] and wname in sch["days_of_week"]:
             for t in sch["times"]:
-                occ.append({
-                    "date": date_obj,
-                    "name": sch["name"],
-                    "time": t
-                })
-    # sort by time
+                occ.append({"date": date_obj, "name": sch["name"], "time": t})
     return sorted(occ, key=lambda x: x["time"])
 
-def weekly_occurrences(week_start: dt.date) -> Dict[str, List[Dict]]:
+def weekly_occurrences(week_start: dt.date):
     week = {}
     for i in range(7):
         d = week_start + dt.timedelta(days=i)
@@ -201,195 +173,53 @@ def adherence_this_week(today: dt.date) -> int:
     if total == 0:
         return 0
     taken = 0
-    for iso, occ_list in week_occ.items():
+    for occ_list in week_occ.values():
         for ev in occ_list:
             if event_key(ev["date"], ev["name"], ev["time"]) in st.session_state.taken_events:
                 taken += 1
     return int((taken / total) * 100)
 
 # ------------------------------
-# Sidebar: reminders & settings
+# Sidebar
 # ------------------------------
 with st.sidebar:
     st.header("Reminders & settings")
     st.session_state.reminder_minutes = st.slider("Reminder window (minutes before dose)", 1, 60, st.session_state.reminder_minutes)
     st.session_state.beep_enabled = st.toggle("Play audio beep for upcoming doses", value=st.session_state.beep_enabled)
-    st.caption("Note: Beeps play when a dose is within the reminder window.")
 
 # ------------------------------
 # Layout
 # ------------------------------
 st.title("💊 MedTimer — Daily Medicine Companion")
-st.write("Add recurring schedules, see today's checklist, weekly calendar, and celebrate adherence. Designed with large fonts and soft colors.")
 
 col_input, col_main, col_side = st.columns([1.3, 1.7, 1.2])
 
 # ------------------------------
-# Input column: add recurring schedules
+# Input column
 # ------------------------------
 with col_input:
     st.subheader("Add medicine schedule")
-
-    # Hybrid input: dropdown or manual
     choice = st.selectbox("Select medicine or choose 'Custom'", options=["Custom"] + COMMON_MEDICINES)
-    med_name = st.text_input("Enter medicine name (used if 'Custom' selected)", value="" if choice != "Custom" else "")
-    final_name = med_name.strip() if choice == "Custom" else choice
-
-    # Select days (multiple times per week)
+    med_name = st.text_input("Enter medicine name", value="" if choice == "Custom" else choice)
     days_selected = st.multiselect("Days of week", DAY_ORDER, default=["Monday", "Wednesday", "Friday"])
-    # Number of daily doses and time inputs
-    dose_count = st.number_input("Doses per selected day", min_value=1, max_value=6, value=1, step=1)
-    dose_times: List[dt.time] = []
-    for i in range(dose_count):
-        tval = st.time_input(f"Dose time #{i+1}", value=dt.time(9 + i*3, 0), key=f"t_{i}")
-        dose_times.append(tval)
-
+    dose_count = st.number_input("Doses per day", min_value=1, max_value=6, value=1, step=1)
+    dose_times = [st.time_input(f"Dose time #{i+1}", value=dt.time(9+i*3,0), key=f"dose_{i}") for i in range(dose_count)]
     start_date = st.date_input("Start date", value=dt.date.today())
-
     if st.button("Add schedule"):
-        if final_name:
+        if med_name.strip():
             st.session_state.schedules.append({
-                "name": final_name,
-                "days_of_week": days_selected if days_selected else [],
+                "name": med_name.strip(),
+                "days_of_week": days_selected,
                 "times": dose_times,
                 "start_date": start_date
             })
-            st.success(f"Added schedule for {final_name} on {', '.join(days_selected) or 'no days selected'} at {[t.strftime('%H:%M') for t in dose_times]}")
+            st.success(f"Added schedule for {med_name}")
         else:
             st.warning("Please provide a valid medicine name.")
 
-    st.markdown("---")
-    st.subheader("Your schedules")
-    if not st.session_state.schedules:
-        st.info("No schedules yet. Add one above.")
-    else:
-        for idx, sch in enumerate(st.session_state.schedules):
-            st.markdown(f"- **{sch['name']}** — {', '.join(sch['days_of_week'])} | times: {', '.join([t.strftime('%H:%M') for t in sch['times']])} | start: {sch['start_date'].isoformat()}")
-            c1, c2, c3 = st.columns([1,1,1])
-            with c1:
-                if st.button(f"Edit {idx}", key=f"edit_{idx}"):
-                    new_name = st.text_input(f"Name {idx}", value=sch["name"], key=f"name_{idx}")
-                    new_days = st.multiselect(f"Days {idx}", DAY_ORDER, default=sch["days_of_week"], key=f"days_{idx}")
-                    # times edit
-                    new_count = st.number_input(f"Doses/day {idx}", min_value=1, max_value=6, value=len(sch["times"]), key=f"cnt_{idx}")
-                    new_times = []
-                    for j in range(new_count):
-                        existing = sch["times"][j] if j < len(sch["times"]) else dt.time(9, 0)
-                        tval = st.time_input(f"Time {idx}-{j+1}", value=existing, key=f"time_{idx}_{j}")
-                        new_times.append(tval)
-                    new_start = st.date_input(f"Start {idx}", value=sch["start_date"], key=f"start_{idx}")
-                    if st.button(f"Save {idx}", key=f"save_{idx}"):
-                        sch["name"] = new_name.strip() or sch["name"]
-                        sch["days_of_week"] = new_days
-                        sch["times"] = new_times
-                        sch["start_date"] = new_start
-                        st.success("Schedule updated.")
-            with c2:
-                if st.button(f"Delete {idx}", key=f"del_{idx}"):
-                    st.session_state.schedules.pop(idx)
-                    st.warning("Schedule deleted.")
-                    st.experimental_rerun()
-            with c3:
-                if st.button(f"Duplicate {idx}", key=f"dup_{idx}"):
-                    st.session_state.schedules.append({
-                        "name": sch["name"],
-                        "days_of_week": sch["days_of_week"][:],
-                        "times": sch["times"][:],
-                        "start_date": sch["start_date"]
-                    })
-                    st.success("Schedule duplicated.")
-
 # ------------------------------
-# Main column: today's checklist with color codes & reminders
+# Main column: checklist
 # ------------------------------
 with col_main:
     st.subheader("Today's checklist")
-    today = dt.date.today()
-    now = dt.datetime.now().time()
-    todays = occurrences_for_date(today)
-
-    if not todays:
-        st.info("No doses scheduled for today.")
-    else:
-        for ev in todays:
-            key = event_key(ev["date"], ev["name"], ev["time"])
-            # status
-            if key in st.session_state.taken_events:
-                status = "taken"
-            elif now < ev["time"]:
-                status = "upcoming"
-            else:
-                status = "missed"
-
-            # reminder window
-            reminder_min = st.session_state.reminder_minutes
-            upcoming_window = False
-            if status == "upcoming":
-                # minutes until dose
-                delta_min = ((dt.datetime.combine(today, ev["time"]) - dt.datetime.combine(today, now)).total_seconds()) / 60.0
-                upcoming_window = 0 <= delta_min <= reminder_min
-                if upcoming_window and st.session_state.beep_enabled:
-                    maybe_beep()
-
-            color_class = {"taken": "pill-green", "upcoming": "pill-yellow", "missed": "pill-red"}[status]
-            pill_text = status.upper()
-
-            st.markdown(f"""
-            <div class="card">
-              <div><b>{ev['name']}</b> at {ev['time'].strftime('%H:%M')}</div>
-              <div class="status-pill {color_class}">{pill_text}</div>
-              {"<div>Reminder: due soon!</div>" if upcoming_window else ""}
-            </div>
-            """, unsafe_allow_html=True)
-
-            cA, cB, cC = st.columns([1,1,1])
-            with cA:
-                if status != "taken":
-                    if st.button(f"Mark Taken {key}", key=f"taken_{key}"):
-                        mark_taken(ev["date"], ev["name"], ev["time"])
-                        st.success(f"Marked {ev['name']} at {ev['time'].strftime('%H:%M')} as taken.")
-            with cB:
-                st.write("")  # spacer
-            with cC:
-                st.write("")  # spacer
-
-    st.markdown("---")
-    st.subheader("Weekly calendar")
-    start = today - dt.timedelta(days=today.weekday())
-    week = weekly_occurrences(start)
-
-    # Build a simple calendar table
-    cal_rows = []
-    for i in range(7):
-        d = start + dt.timedelta(days=i)
-        label = f"{DAY_ORDER[i]} ({d.strftime('%d %b')})"
-        items = week[d.isoformat()]
-        if items:
-            entries = "; ".join([f"{ev['time'].strftime('%H:%M')} {ev['name']}" for ev in items])
-        else:
-            entries = "—"
-        cal_rows.append({"Day": label, "Scheduled doses": entries})
-    st.table(cal_rows)
-
-# ------------------------------
-# Side column: adherence & motivation
-# ------------------------------
-with col_side:
-    st.subheader("Weekly adherence")
-    score = adherence_this_week(dt.date.today())
-    st.metric("Adherence", f"{score}%")
-
-    if score >= 80:
-        st.success("🎉 Excellent adherence this week!")
-        draw_trophy()
-    elif score >= 50:
-        st.info("👍 Good job! Keep going.")
-    else:
-        st.warning("⚠️ Let's aim for better consistency.")
-
-    st.markdown("---")
-    st.subheader("Motivational tip")
-    st.info(random.choice(QUOTES))
-
-    st.markdown("---")
-    st.caption("Audio alerts play for upcoming doses within your reminder window. Turtle drawings open in a separate local window.")
+    today = dt.date.today
