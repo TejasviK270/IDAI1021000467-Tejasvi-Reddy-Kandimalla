@@ -59,48 +59,15 @@ if "motivational_quotes" not in st.session_state:
         "You're not alone—MedTimer is here for you.",
         "Celebrate every dose taken!"
     ]
-# Full medicine list (can be expanded)
-ALL_MEDICINES = sorted([
+
+# Common medicine list
+COMMON_MEDICINES = sorted([
     "Aspirin", "Amoxicillin", "Azithromycin", "Atorvastatin", "Acetaminophen", "Albuterol",
-    "Baclofen", "Bisoprolol", "Bupropion", "Betamethasone",
-    "Ciprofloxacin", "Cetirizine", "Clonazepam", "Citalopram", "Chlorpheniramine",
-    "Doxycycline", "Dexamethasone", "Diazepam", "Digoxin",
-    "Erythromycin", "Escitalopram", "Esomeprazole",
-    "Furosemide", "Fluoxetine", "Famotidine",
-    "Gabapentin", "Glimepiride", "Gliclazide",
-    "Hydrochlorothiazide", "Hydroxyzine", "Hydrocortisone",
-    "Ibuprofen", "Insulin", "Indomethacin", "Ivermectin", "Imatinib",
-    "Levothyroxine", "Lisinopril", "Losartan", "Loratadine",
-    "Metformin", "Montelukast", "Metoprolol", "Methylprednisolone",
-    "Naproxen", "Nifedipine", "Nitroglycerin", "Nortriptyline",
-    "Omeprazole", "Ondansetron", "Olanzapine",
-    "Paracetamol", "Pantoprazole", "Prednisone", "Propranolol",
-    "Quetiapine", "Quinapril",
-    "Ranitidine", "Risperidone", "Rosuvastatin",
-    "Sertraline", "Simvastatin", "Salbutamol",
-    "Tramadol", "Tamsulosin", "Terbinafine",
-    "Ursodiol", "Ulipristal",
-    "Valacyclovir", "Venlafaxine", "Vitamin D",
-    "Warfarin", "Wellbutrin",
-    "Zolpidem", "Zinc Supplement", "Zopiclone"
+    "Ibuprofen", "Insulin", "Indomethacin", "Ivermectin", "Iron Supplement",
+    "Levothyroxine", "Lisinopril", "Losartan", "Metformin", "Montelukast",
+    "Omeprazole", "Ondansetron", "Paracetamol", "Pantoprazole", "Prednisone",
+    "Sertraline", "Simvastatin", "Tramadol", "Tamsulosin", "Vitamin D", "Warfarin"
 ])
-
-# Autocomplete input
-st.subheader("Add Medicine")
-typed_name = st.text_input("Start typing medicine name", placeholder="e.g., in, an, met...")
-
-# Filter suggestions
-suggestions = [m for m in ALL_MEDICINES if m.lower().startswith(typed_name.lower())] if typed_name else []
-
-if suggestions:
-    selected_med = st.selectbox("Select from suggestions", options=suggestions)
-    med_time = st.time_input("Scheduled Time", value=dt.time(9, 0))
-    if st.button("Add to Schedule"):
-        add_medicine(selected_med, med_time)
-        st.success(f"Added {selected_med} at {med_time.strftime('%H:%M')}")
-else:
-    st.info("Type at least 1–2 letters to see suggestions.")
-    
 
 # ------------------------------
 # Turtle graphics
@@ -179,7 +146,7 @@ col_input, col_checklist, col_side = st.columns([1.2, 1.5, 1.3])
 # ------------------------------
 with col_input:
     st.subheader("Add Medicine")
-    med_name = st.selectbox("Medicine Name", options=st.session_state.medicine_options)
+    med_name = st.selectbox("Medicine Name", options=COMMON_MEDICINES)
     med_time = st.time_input("Scheduled Time", value=dt.time(9, 0))
     if st.button("Add to Schedule"):
         add_medicine(med_name, med_time)
