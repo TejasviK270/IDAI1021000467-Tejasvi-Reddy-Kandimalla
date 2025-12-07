@@ -15,7 +15,7 @@ except Exception:
 # ------------------------------
 # App config
 # ------------------------------
-st.set_page_config(page_title="MedTimer Companion", page_icon="Pill", layout="wide")
+st.set_page_config(page_title="MedTimer Companion", page_icon="💊", layout="wide")
 
 # ------------------------------
 # Styling
@@ -52,8 +52,6 @@ if "schedules" not in st.session_state:
 if "taken_events" not in st.session_state:
     st.session_state.taken_events = set()
 if "reminder_minutes" not in st.session_state:
-    pass  # keep existing value
-else:
     st.session_state.reminder_minutes = 15
 
 # ------------------------------
@@ -162,7 +160,7 @@ with st.sidebar:
 # ------------------------------
 # Main layout
 # ------------------------------
-st.title("Pill MedTimer — Your Daily Medicine Companion")
+st.title("💊 MedTimer — Your Daily Medicine Companion")
 
 col_input, col_main, col_side = st.columns([1.3, 1.7, 1.2])
 
