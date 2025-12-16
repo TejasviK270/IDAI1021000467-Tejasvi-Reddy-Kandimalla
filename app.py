@@ -6,7 +6,7 @@ import struct
 # === Page Setup ===
 st.set_page_config(page_title="MedTimer", page_icon="💊", layout="wide")
 
-# === Session State ===
+# === Session State Initialization ===
 if "schedules" not in st.session_state:
     st.session_state.schedules = []
 if "taken_events" not in st.session_state:
@@ -27,26 +27,6 @@ def get_medicine_color(name: str) -> str:
         st.session_state.medicine_colors[name] = COLOR_PALETTE[idx]
     return st.session_state.medicine_colors[name]
 
-def show_status(message: str, color: str) -> None:
-    if color == "green":
-        st.success(message)
-    elif color == "blue":
-        st.info(message)
-    elif color == "orange":
-        st.warning(message)
-    elif color == "red":
-        st.error(message)
-    elif color == "purple":
-        st.write(f"🟣 {message}")
-    elif color == "pink":
-        st.write(f"🌸 {message}")
-    elif color == "teal":
-        st.write(f"🟦 {message}")
-    elif color == "brown":
-        st.write(f"🟤 {message}")
-    else:
-        st.write(message)
-
 # === Utility Functions ===
 def unique_key(date_obj: dt.date, name: str, time_obj: dt.time) -> str:
     return f"{date_obj}|{name.strip()}|{time_obj.strftime('%H:%M')}"
@@ -57,11 +37,9 @@ def mark_taken(date_obj: dt.date, name: str, time_obj: dt.time, value: bool) -> 
         st.session_state.taken_events.add(key)
     else:
         st.session_state.taken_events.discard(key)
-    # No rerun here — caller will handle it to avoid multiple reruns
 
 def is_taken(date_obj: dt.date, name: str, time_obj: dt.time) -> bool:
-    key = unique_key(date_obj, name, time_obj)
-    return key in st.session_state.taken_events
+    return unique_key(date_obj, name, time_obj) in st.session_state.taken_events
 
 def beep() -> None:
     try:
@@ -98,13 +76,11 @@ def status_for_event(event_time: dt.datetime, now: dt.datetime, reminder_min: in
     else:
         return "upcoming", mins_until
 
-def calculate_adherence_score() -> tuple[int, int, int]:
-    """Returns (taken, total, percentage) over last 7 days"""
+def calculate_adherence_score():
     today = dt.date.today()
-    taken_count = 0
-    total_count = 0
+    taken_count = total_count = 0
     for i in range(7):
-        day = today - dt.timedelta(days=i)  # past 7 days including today
+        day = today - dt.timedelta(days=i)
         events = get_events_for_day(day)
         for e in events:
             total_count += 1
@@ -116,42 +92,44 @@ def calculate_adherence_score() -> tuple[int, int, int]:
 # === Sidebar ===
 with st.sidebar:
     st.header("🛠 Settings")
-    st.session_state.reminder_min = st.slider(
-        "Reminder (minutes before)", 1, 60, st.session_state.reminder_min
-    )
+    st.session_state.reminder_min = st.slider("Reminder (minutes before)", 1, 60, st.session_state.reminder_min)
     st.divider()
     if st.button("🔄 Reset All Taken Records", type="secondary"):
         st.session_state.taken_events = set()
-        st.toast("All taken records have been reset!", icon="🗑️")
+        st.toast("All records reset!", icon="🗑️")
         st.rerun()
     st.divider()
-    st.caption("MedTimer 🐢 v1.0")
+    st.caption("MedTimer 🐢 v1.1")
 
-# === Header ===
+# === Header & Adherence Score ===
 st.title("🐢 Pill MedTimer")
-st.caption("Never miss a dose again – stay consistent!")
+st.caption("Track your meds • Stay consistent • Feel better")
 
-# Adherence Score (Prominent)
 taken, total, score = calculate_adherence_score()
 if total == 0:
-    st.info("No doses scheduled in the last 7 days yet.")
+    st.info("No scheduled doses in the last 7 days.")
 else:
-    st.metric(label="📊 7-Day Adherence Score", value=f"{score}%")
-    if score == 100:
-        st.success("🐢 Perfect adherence! Amazing consistency! 🎉")
-    elif score >= 80:
-        st.success("🐢 Great job! Keep it up! 💪")
-    elif score >= 60:
-        st.warning("🐢 Doing okay – let's improve a bit! 🌱")
-    else:
-        st.error("🐢 Room for improvement – you got this! 💊")
+    col_a, col_b = st.columns([1, 3])
+    with col_a:
+        st.metric("📊 7-Day Adherence", f"{score}%")
+    with col_b:
+        if score == 100:
+            st.success("🐢 Perfect! You're crushing it! 🎉")
+        elif score >= 80:
+            st.success("🐢 Excellent consistency! Keep going! 💪")
+        elif score >= 60:
+            st.warning("🐢 Good effort – a little more and you're there! 🌟")
+        else:
+            st.error("🐢 Let's get back on track – you've got this! 💊")
 
-col1, col2, col3 = st.columns([1.7, 2, 1.3])
+st.divider()
+
+col1, col2, col3 = st.columns([1.8, 2, 1.8])
 
 # === Add Medicine ===
 with col1:
     st.subheader("➕ Add New Medicine")
-    name = st.text_input("Medicine name", placeholder="e.g., Vitamin D")
+    name = st.text_input("Medicine name", placeholder="e.g., Paracetamol")
     days = st.multiselect(
         "Repeat on days",
         ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
@@ -159,103 +137,101 @@ with col1:
     )
     st.write("**Dose times**")
     for i in range(len(st.session_state.temp_doses)):
-        col_a, col_b = st.columns([3, 1])
-        with col_a:
-            new_time = st.time_input(
-                f"Dose {i+1}", value=st.session_state.temp_doses[i], key=f"time_{i}"
-            )
+        c1, c2 = st.columns([3, 1])
+        with c1:
+            new_time = st.time_input(f"Dose {i+1}", st.session_state.temp_doses[i], key=f"t{i}")
             st.session_state.temp_doses[i] = new_time
-        with col_b:
-            if st.button("❌", key=f"remove_{i}"):
+        with c2:
+            if st.button("❌", key=f"rm{i}"):
                 st.session_state.temp_doses.pop(i)
                 st.rerun()
-    if st.button("➕ Add another dose time"):
+    if st.button("➕ Add dose time"):
         st.session_state.temp_doses.append(dt.time(18, 0))
         st.rerun()
 
-    if st.button("💾 Save Medicine Schedule", type="primary"):
+    if st.button("💾 Save Schedule", type="primary"):
         if name.strip() and days and st.session_state.temp_doses:
             st.session_state.schedules.append({
                 "name": name.strip(),
                 "days": days,
                 "times": st.session_state.temp_doses.copy(),
-                "start_date": dt.date.today()
             })
-            _ = get_medicine_color(name.strip())
-            st.success(f"Added: **{name.strip()}** ({len(st.session_state.temp_doses)} dose(s))")
+            get_medicine_color(name.strip())
+            st.success(f"Added **{name.strip()}**")
             st.session_state.temp_doses = [dt.time(8, 0)]
             st.rerun()
         else:
-            st.error("Please fill in name, days, and at least one time.")
+            st.error("Complete all fields.")
 
 # === Today's Checklist ===
 with col2:
     st.subheader(f"📅 Today – {dt.date.today():%A, %b %d}")
-    events_today = get_events_for_day(dt.date.today())
+    today_events = get_events_for_day(dt.date.today())
     now = dt.datetime.now()
 
-    if not events_today:
-        st.info("No medications scheduled for today.")
+    if not today_events:
+        st.info("No doses scheduled today. Relax! 😊")
     else:
-        for idx, e in enumerate(events_today):
-            event_dt = dt.datetime.combine(dt.date.today(), e["time"])
-            status, mins_until = status_for_event(event_dt, now, st.session_state.reminder_min)
-            key = unique_key(dt.date.today(), e["name"], e["time"])
-            taken = is_taken(dt.date.today(), e["name"], e["time"])
-            med_color = get_medicine_color(e["name"])
+        for idx, event in enumerate(today_events):
+            event_dt = dt.datetime.combine(dt.date.today(), event["time"])
+            status, _ = status_for_event(event_dt, now, st.session_state.reminder_min)
+            key = unique_key(dt.date.today(), event["name"], event["time"])
+            currently_taken = is_taken(dt.date.today(), event["name"], event["time"])
 
+            # Checkbox
             checked = st.checkbox(
-                label=f"{e['name']} — {e['time'].strftime('%I:%M %p')}",
-                value=taken,
-                key=f"today_chk_{idx}_{key}"
+                f"**{event['name']}** — {event['time'].strftime('%I:%M %p')}",
+                value=currently_taken,
+                key=f"today_{idx}_{key}"
             )
 
-            # Status message
-            if taken:
-                show_status("✅ Taken", med_color)
+            # Handle change and sync
+            if checked != currently_taken:
+                mark_taken(dt.date.today(), event["name"], event["time"], checked)
+                st.rerun()  # Immediate update across app
+
+            # Visual feedback
+            color = get_medicine_color(event["name"])
+            if checked:
+                st.success("✅ Taken", icon="💊")
             elif status == "missed":
-                show_status("❌ Missed", "red")
+                st.error("❌ Missed")
             elif status == "due":
                 beep()
-                show_status("🔔 Due now!", "orange")
+                st.warning("🔔 Due now!", icon="⚠️")
             else:
-                mins = int(max(0, mins_until))
-                time_str = f"{mins}m" if mins < 60 else f"{mins//60}h {mins%60}m"
-                show_status(f"⏳ Upcoming in {time_str}", med_color)
+                st.info("⏳ Upcoming", icon="🕐")
 
-            # Sync if changed
-            if checked != taken:
-                mark_taken(dt.date.today(), e["name"], e["time"], checked)
-                st.rerun()  # Sync immediately
-
-# === Weekly Checklist ===
+# === Weekly View ===
 with col3:
-    st.subheader("📆 Weekly View (Today + Next 6 Days)")
+    st.subheader("📆 Weekly View\n(Today + Next 6 Days)")
     today = dt.date.today()
-    for i in range(7):
-        day = today + dt.timedelta(days=i)
-        day_str = "Today" if i == 0 else day.strftime("%A")
-        st.write(f"**{day_str}, {day:%b %d}**")
+
+    for offset in range(7):
+        day = today + dt.timedelta(days=offset)
+        day_label = "Today" if offset == 0 else day.strftime("%A")
+        st.markdown(f"**{day_label}, {day:%b %d}**")
 
         day_events = get_events_for_day(day)
         if not day_events:
-            st.caption("_(no doses)_")
+            st.caption("_no doses_")
+            st.markdown("---")
             continue
 
-        for jdx, e in enumerate(day_events):
-            key = unique_key(day, e["name"], e["time"])
-            taken = is_taken(day, e["name"], e["time"])
-            med_color = get_medicine_color(e["name"])
+        for jdx, event in enumerate(day_events):
+            key = unique_key(day, event["name"], event["time"])
+            taken = is_taken(day, event["name"], event["time"])
 
             checked = st.checkbox(
-                label=f"{e['name']} — {e['time'].strftime('%I:%M %p')}",
+                f"{event['name']} — {event['time'].strftime('%I:%M %p')}",
                 value=taken,
-                key=f"week_chk_{i}_{jdx}_{key}"
+                key=f"week_{offset}_{jdx}_{key}"
             )
 
             if checked != taken:
-                mark_taken(day, e["name"], e["time"], checked)
-                st.rerun()  # Immediate sync
+                mark_taken(day, event["name"], event["time"], checked)
+                st.rerun()  # Syncs immediately – including with Today's view
 
-st.markdown("---")
-st.caption("Made with 🐢 care | Stay healthy and consistent!")
+        st.markdown("---")
+
+st.caption("Made with 🐢 | Stay healthy and consistent!")
