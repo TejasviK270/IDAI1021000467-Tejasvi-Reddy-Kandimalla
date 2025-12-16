@@ -195,7 +195,7 @@ with col2:
     st.subheader("Weekly Checklist (today + next 6 days)")
     today = dt.date.today()
 
-    for i in range(7):  # today + next 6 days
+    for i in range(7):
         day = today + dt.timedelta(days=i)
         wd = day.strftime("%A")
         st.write(f"**{wd}, {day:%b %d}**")
@@ -217,4 +217,9 @@ with col2:
                 checked = st.checkbox(
                     label=f"{e['name']} — {e['time'].strftime('%I:%M %p')}",
                     value=taken,
-                    key=f"
+                    key=f"chk_week_{day}_{idx}_{key}"
+                )
+
+                if taken:
+                    show_status("Taken", med_color)
+                else
