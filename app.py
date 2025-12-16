@@ -203,7 +203,7 @@ with col3:
   # ACC-style smiley emoji
 st.write("😊 You're doing amazing!")
 
-    st.caption(random.choice([
+st.caption(random.choice([
         "Every dose counts.",
         "Consistency is key.",
         "Small steps, big results.",
