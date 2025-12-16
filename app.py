@@ -200,15 +200,8 @@ with col3:
     else:
         st.error("Let's get back on track!")
 
-    # Turtle smiley (ASCII art, not an emoji)
-    st.text(
-        "   __     \n"
-        "  /  \\__  \n"
-        " /_/\\___\\ \n"
-        " \\ \\/ _/  \n"
-        "  \\__/    \n"
-        "  (•‿•)    "
-    )
+  # ACC-style smiley emoji
+st.write("😊 You're doing amazing!")
 
     st.caption(random.choice([
         "Every dose counts.",
