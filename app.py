@@ -28,7 +28,6 @@ def get_medicine_color(name: str) -> str:
     return st.session_state.medicine_colors[name]
 
 def show_status(message: str, color: str) -> None:
-    # Map colors to Streamlit message types or emoji badges
     if color == "green":
         st.success(message)
     elif color == "blue":
@@ -77,7 +76,6 @@ def beep() -> None:
         )
         st.audio(header + data, format="audio/wav", autoplay=True)
     except Exception:
-        # Silent fallback if audio fails
         pass
 
 def get_today_events():
@@ -112,8 +110,10 @@ def status_for_event(event_time: dt.datetime, now: dt.datetime, reminder_min: in
 with st.sidebar:
     st.header("Settings")
     st.session_state.reminder_min = st.slider("Reminder (minutes before)", 1, 60, st.session_state.reminder_min)
-    if st.button("Clear all taken records"):
+
+    if st.button("Reset all records"):
         st.session_state.taken_events = set()
+        st.toast("All records have been reset.")
         st.rerun()
 
 # === Header ===
@@ -156,8 +156,7 @@ with col1:
                 "times": st.session_state.temp_doses.copy(),
                 "start_date": dt.date.today()
             })
-            # Assign a color immediately to ensure consistent display
-            _ = get_medicine_color(name.strip())
+            _ = get_medicine_color(name.strip())  # assign color
             st.success(f"Added: {name} ({len(st.session_state.temp_doses)} dose(s))")
             st.session_state.temp_doses = [dt.time(8, 0)]
             st.rerun()
@@ -209,70 +208,5 @@ with col2:
     st.subheader("Weekly checklist (today + next 6 days)")
     today = dt.date.today()
 
-    for i in range(7):  # today + next 6 days
-        day = today + dt.timedelta(days=i)
-        st.write(f"**{day.strftime('%A')}, {day:%b %d}**")
-
-        day_events = get_events_for_day(day)
-
-        if not day_events:
-            st.caption("No doses scheduled.")
-        else:
-            for jdx, e in enumerate(day_events):
-                key = unique_key(day, e["name"], e["time"])
-                taken = key in st.session_state.taken_events
-                med_color = get_medicine_color(e["name"])
-
-                checked = st.checkbox(
-                    label=f"{e['name']} — {e['time'].strftime('%I:%M %p')}",
-                    value=taken,
-                    key=f"chk_week_{day}_{jdx}_{key}"
-                )
-
-                if taken:
-                    show_status("Taken", med_color)
-                else:
-                    show_status("Scheduled", med_color)
-
-                if checked != taken:
-                    mark_taken(day, e["name"], e["time"], checked)
-
-# === Weekly Stats (adherence) ===
-with col3:
-    st.subheader("7-day adherence")
-    expected = 0
-    taken_count = 0
-    today = dt.date.today()
-
-    # Count expected and taken for today + next 6 days
     for i in range(7):
-        day = today + dt.timedelta(days=i)
-        wd = day.strftime("%A")
-        prefix = f"{day}|"
-
-        for s in st.session_state.schedules:
-            if any(w in s["days"] for w in [wd, wd[:3]]):
-                expected += len(s["times"])
-
-        for tk in st.session_state.taken_events:
-            if tk.startswith(prefix):
-                taken_count += 1
-
-    adherence = int(100 * taken_count / expected) if expected > 0 else 100
-    st.metric("Adherence", f"{adherence}%")
-    st.progress(min(adherence, 100) / 100.0)
-
-    if adherence >= 95:
-        st.success("Excellent adherence!")
-    elif adherence >= 80:
-        st.success("Great job!")
-    elif adherence >= 60:
-        st.warning("Keep going")
-    else:
-        st.error("Let's get back on track!")
-
-    st.write("😊 You're doing amazing!")
-
-    if st.button("Reset all records"):
-        st.session_state.taken_events = set()
-        st.rerun()
+        day = today
