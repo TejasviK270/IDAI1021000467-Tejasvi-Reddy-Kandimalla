@@ -1,6 +1,5 @@
 import streamlit as st
 import datetime as dt
-import random
 import math
 import struct
 
@@ -116,7 +115,7 @@ col1, col2, col3 = st.columns([1.7, 2, 1.3])
 with col1:
     st.subheader("Add new medicine")
 
-    name = st.text_input("Medicine name", placeholder="e.g., Metformin 500mg")
+    name = st.text_input("Medicine name", placeholder="e.g., Paracetamol")
 
     days = st.multiselect(
         "Repeat on days",
@@ -209,16 +208,4 @@ with col2:
         if not events:
             st.caption("No doses scheduled.")
         else:
-            for idx, e in enumerate(events):
-                key = unique_key(day, e["name"], e["time"])
-                taken = key in st.session_state.taken_events
-                med_color = get_medicine_color(e["name"])
-
-                checked = st.checkbox(
-                    label=f"{e['name']} — {e['time'].strftime('%I:%M %p')}",
-                    value=taken,
-                    key=f"chk_week_{day}_{idx}_{key}"
-                )
-
-                if taken:
-                    show_status("Taken"),
+            for idx
