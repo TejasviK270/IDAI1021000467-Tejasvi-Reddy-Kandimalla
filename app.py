@@ -98,7 +98,6 @@ def status_for_event(event_time: dt.datetime, now: dt.datetime, reminder_min: in
 with st.sidebar:
     st.header("Settings")
     st.session_state.reminder_min = st.slider("Reminder (minutes before)", 1, 60, st.session_state.reminder_min)
-
     if st.button("Reset all records"):
         st.session_state.taken_events = set()
         st.toast("All records have been reset.")
@@ -107,6 +106,7 @@ with st.sidebar:
 # === Header ===
 st.title("Pill MedTimer")
 st.caption("Never miss a dose again.")
+
 col1, col2, col3 = st.columns([1.7, 2, 1.3])
 
 # === Add Medicine ===
@@ -118,7 +118,6 @@ with col1:
         ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
         default=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     )
-
     st.write("Dose times")
     for i in range(len(st.session_state.temp_doses)):
         col_a, col_b = st.columns([3, 1])
@@ -129,11 +128,9 @@ with col1:
             if st.button("Remove", key=f"remove_{i}"):
                 st.session_state.temp_doses.pop(i)
                 st.rerun()
-
     if st.button("Add another dose time"):
         st.session_state.temp_doses.append(dt.time(18, 0))
         st.rerun()
-
     if st.button("Save medicine schedule", type="primary"):
         if name.strip() and len(st.session_state.temp_doses) > 0 and len(days) > 0:
             st.session_state.schedules.append({
@@ -154,7 +151,6 @@ with col2:
     st.subheader(f"Today – {dt.date.today():%A, %b %d}")
     events_today = get_events_for_day(dt.date.today())
     now = dt.datetime.now()
-
     if not events_today:
         st.info("No medications scheduled for today.")
     else:
@@ -164,13 +160,11 @@ with col2:
             key = unique_key(dt.date.today(), e["name"], e["time"])
             taken = key in st.session_state.taken_events
             med_color = get_medicine_color(e["name"])
-
             checked = st.checkbox(
                 label=f"{e['name']} — {e['time'].strftime('%I:%M %p')}",
                 value=taken,
                 key=f"chk_today_{idx}_{key}"
             )
-
             if taken:
                 show_status("Taken", med_color)
             elif status == "missed":
@@ -184,21 +178,17 @@ with col2:
                     f"Upcoming in {mins}m" if mins < 60 else f"Upcoming in {mins//60}h {mins%60}m",
                     med_color
                 )
-
             if checked != taken:
                 mark_taken(dt.date.today(), e["name"], e["time"], checked)
 
 # === Weekly Checklist ===
-with col2:
+with col3:  # Moved to col3 to avoid overlap and layout issues
     st.subheader("Weekly checklist (today + next 6 days)")
     today = dt.date.today()
-
     for i in range(7):
         day = today + dt.timedelta(days=i)
         st.write(f"**{day.strftime('%A')}, {day:%b %d}**")
-
         day_events = get_events_for_day(day)
-
         if not day_events:
             st.caption("No doses scheduled.")
         else:
@@ -206,6 +196,10 @@ with col2:
                 key = unique_key(day, e["name"], e["time"])
                 taken = key in st.session_state.taken_events
                 med_color = get_medicine_color(e["name"])
-
                 checked = st.checkbox(
-                    label=f"{e['name']} — {e['time'].
+                    label=f"{e['name']} — {e['time'].strftime('%I:%M %p')}",
+                    value=taken,
+                    key=f"chk_week_{i}_{jdx}_{key}"
+                )
+                if checked != taken:
+                    mark_taken(day, e["name"], e["time"], checked)
