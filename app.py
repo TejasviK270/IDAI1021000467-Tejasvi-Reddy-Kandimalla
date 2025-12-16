@@ -230,4 +230,4 @@ with col3:
     else:
         st.error("Let's get back on track!")
 
-    st.write("😊 You're doing amazing
+   
