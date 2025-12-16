@@ -16,6 +16,37 @@ if "reminder_min" not in st.session_state:
     st.session_state.reminder_min = 15
 if "temp_doses" not in st.session_state:
     st.session_state.temp_doses = [dt.time(8, 0)]
+if "medicine_colors" not in st.session_state:
+    st.session_state.medicine_colors = {}
+
+# === Color Palette ===
+COLOR_PALETTE = ["green", "blue", "orange", "purple", "pink", "teal", "brown"]
+
+def get_medicine_color(name):
+    if name not in st.session_state.medicine_colors:
+        idx = len(st.session_state.medicine_colors) % len(COLOR_PALETTE)
+        st.session_state.medicine_colors[name] = COLOR_PALETTE[idx]
+    return st.session_state.medicine_colors[name]
+
+def show_status(message, color):
+    if color == "green":
+        st.success(message)
+    elif color == "blue":
+        st.info(message)
+    elif color == "orange":
+        st.warning(message)
+    elif color == "red":
+        st.error(message)
+    elif color == "purple":
+        st.write(f"🟣 {message}")
+    elif color == "pink":
+        st.write(f"🌸 {message}")
+    elif color == "teal":
+        st.write(f"🟦 {message}")
+    elif color == "brown":
+        st.write(f"🟤 {message}")
+    else:
+        st.write(message)
 
 # === Helper Functions ===
 def unique_key(date, name, time_obj):
@@ -137,6 +168,8 @@ with col2:
             key = unique_key(dt.date.today(), e["name"], e["time"])
             taken = key in st.session_state.taken_events
 
+            med_color = get_medicine_color(e["name"])
+
             checked = st.checkbox(
                 label=f"{e['name']} — {e['time'].strftime('%I:%M %p')}",
                 value=taken,
@@ -144,26 +177,26 @@ with col2:
             )
 
             if taken:
-                st.success("Taken")
+                show_status("Taken", med_color)
             elif status == "missed":
-                st.error("Missed")
+                show_status("Missed", "red")
             elif status == "due":
-                st.warning("Due now")
                 beep()
+                show_status("Due now", "orange")
             else:
                 mins = int(mins_until)
-                st.info(f"Upcoming in {mins}m" if mins < 60 else f"Upcoming in {mins//60}h {mins%60}m")
+                show_status(f"Upcoming in {mins}m" if mins < 60 else f"Upcoming in {mins//60}h {mins%60}m", med_color)
 
             if checked != taken:
                 mark_taken(dt.date.today(), e["name"], e["time"], checked)
 
-# === Weekly Checklist ===
+# === Weekly Checklist (today + next 6 days) ===
 with col2:
-    st.subheader("Weekly Checklist (last 7 days)")
+    st.subheader("Weekly Checklist (today + next 6 days)")
     today = dt.date.today()
 
-    for i in range(7):
-        day = today - dt.timedelta(days=i)
+    for i in range(7):  # today + next 6 days
+        day = today + dt.timedelta(days=i)
         wd = day.strftime("%A")
         st.write(f"**{wd}, {day:%b %d}**")
 
@@ -179,58 +212,9 @@ with col2:
             for idx, e in enumerate(events):
                 key = unique_key(day, e["name"], e["time"])
                 taken = key in st.session_state.taken_events
+                med_color = get_medicine_color(e["name"])
 
                 checked = st.checkbox(
                     label=f"{e['name']} — {e['time'].strftime('%I:%M %p')}",
                     value=taken,
-                    key=f"chk_week_{day}_{idx}_{key}"
-                )
-
-                if taken:
-                    st.success("Taken")
-                else:
-                    if day < today:
-                        st.error("Missed")
-                    else:
-                        st.info("Scheduled")
-
-                if checked != taken:
-                    mark_taken(day, e["name"], e["time"], checked)
-
-# === Weekly Stats ===
-with col3:
-    st.subheader("7-day adherence")
-    expected = taken = 0
-    today = dt.date.today()
-
-    for i in range(7):
-        day = today - dt.timedelta(days=i)
-        wd = day.strftime("%A")
-        prefix = f"{day}|"
-
-        for s in st.session_state.schedules:
-            if any(w in s["days"] for w in [wd, wd[:3]]):
-                expected += len(s["times"])
-
-        for tk in st.session_state.taken_events:
-            if tk.startswith(prefix):
-                taken += 1
-
-    adherence = int(100 * taken / expected) if expected > 0 else 100
-    st.metric("Adherence", f"{adherence}%")
-    st.progress(min(adherence, 100) / 100.0)
-
-    if adherence >= 95:
-        st.success("Excellent adherence!")
-    elif adherence >= 80:
-        st.success("Great job!")
-    elif adherence >= 60:
-        st.warning("Keep going")
-    else:
-        st.error("Let's get back on track!")
-
-    st.write("😊 You're doing amazing!")
-
-    if st.button("Reset All Records"):
-        st.session_state.taken_events = set()
-       
+                    key=f"
