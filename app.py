@@ -15,7 +15,7 @@ if "taken_events" not in st.session_state:
 if "reminder_min" not in st.session_state:
     st.session_state.reminder_min = 15
 if "temp_doses" not in st.session_state:
-    st.session_state.temp_doses = [dt.time(8, 0)]  # Start with 1 dose
+    st.session_state.temp_doses = [dt.time(8, 0)]
 
 # === Helper Functions ===
 def unique_key(date, name, time_obj):
@@ -118,7 +118,7 @@ with col1:
                 "start_date": dt.date.today()
             })
             st.success(f"Added: {name} ({len(st.session_state.temp_doses)} dose(s))")
-            st.session_state.temp_doses = [dt.time(8, 0)]  # Reset to 1 dose
+            st.session_state.temp_doses = [dt.time(8, 0)]
             st.rerun()
         else:
             st.error("Please enter a name and at least one time")
@@ -198,7 +198,7 @@ with col2:
                 if checked != taken:
                     mark_taken(day, e["name"], e["time"], checked)
 
-# === Weekly Stats: Adherence score ===
+# === Weekly Stats ===
 with col3:
     st.subheader("7-day adherence")
     expected = taken = 0
@@ -219,5 +219,15 @@ with col3:
 
     adherence = int(100 * taken / expected) if expected > 0 else 100
     st.metric("Adherence", f"{adherence}%")
+    st.progress(min(adherence, 100) / 100.0)
 
-        if expected > 0:
+    if adherence >= 95:
+        st.success("Excellent adherence!")
+    elif adherence >= 80:
+        st.success("Great job!")
+    elif adherence >= 60:
+        st.warning("Keep going")
+    else:
+        st.error("Let's get back on track!")
+
+    st.write("😊 You're doing amazing
