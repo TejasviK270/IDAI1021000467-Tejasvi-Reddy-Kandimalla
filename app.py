@@ -2,6 +2,7 @@ import streamlit as st
 import datetime as dt
 import math
 import struct
+import random
 
 # === Page Setup ===
 st.set_page_config(page_title="MedTimer", page_icon="💊", layout="wide")
@@ -17,6 +18,8 @@ if "temp_doses" not in st.session_state:
     st.session_state.temp_doses = [dt.time(8, 0)]
 if "medicine_colors" not in st.session_state:
     st.session_state.medicine_colors = {}
+if "editing_index" not in st.session_state:
+    st.session_state.editing_index = None
 
 # === Color Palette ===
 COLOR_PALETTE = ["green", "blue", "orange", "purple", "pink", "teal", "brown"]
@@ -89,6 +92,33 @@ def calculate_adherence_score():
     percentage = (taken_count / total_count * 100) if total_count > 0 else 100
     return taken_count, total_count, round(percentage)
 
+def get_random_tip():
+    tips = [
+        "Remember to stay hydrated while taking your meds!",
+        "Consistency is key – small steps lead to big improvements.",
+        "Set a gentle reminder tone to make tracking feel less stressful.",
+        "Celebrate your wins, no matter how small!",
+        "Talk to your doctor if you have questions about your schedule.",
+        "A calm mind helps with remembering doses – take deep breaths.",
+        "Use colors to organize your meds visually.",
+        "You're doing great – keep up the good work!",
+        "Pair your meds with a favorite routine, like breakfast.",
+        "Empower yourself by tracking your progress daily."
+    ]
+    return random.choice(tips)
+
+def draw_turtle():
+    turtle_ascii = """
+       .-""-.
+      /      \\
+     |        |
+     |        |
+      \\      /
+       `----'
+    """
+    st.markdown("🐢 **Turtle Says: Great Job!**")
+    st.code(turtle_ascii, language="")
+
 # === Sidebar ===
 with st.sidebar:
     st.header("🛠 Settings")
@@ -112,6 +142,8 @@ else:
     col_a, col_b = st.columns([1, 3])
     with col_a:
         st.metric("📊 7-Day Adherence", f"{score}%")
+        if score >= 80:
+            draw_turtle()
     with col_b:
         if score == 100:
             st.success("🐢 Perfect! You're crushing it! 🎉")
@@ -124,17 +156,34 @@ else:
 
 st.divider()
 
+# === Motivational Tip ===
+st.subheader("💡 Daily Tip")
+st.info(get_random_tip())
+
+st.divider()
+
 col1, col2, col3 = st.columns([1.8, 2, 1.8])
 
-# === Add Medicine ===
+# === Add/Edit/Delete Medicine ===
 with col1:
-    st.subheader("➕ Add New Medicine")
-    name = st.text_input("Medicine name", placeholder="e.g., Paracetamol")
-    days = st.multiselect(
-        "Repeat on days",
-        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-        default=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    )
+    st.subheader("➕ Add/Edit Medicine")
+    if st.session_state.editing_index is not None:
+        sched = st.session_state.schedules[st.session_state.editing_index]
+        name = st.text_input("Medicine name", value=sched["name"], placeholder="e.g., Paracetamol")
+        days = st.multiselect(
+            "Repeat on days",
+            ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+            default=sched["days"]
+        )
+        st.session_state.temp_doses = sched["times"].copy()
+    else:
+        name = st.text_input("Medicine name", placeholder="e.g., Paracetamol")
+        days = st.multiselect(
+            "Repeat on days",
+            ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+            default=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        )
+    
     st.write("**Dose times**")
     for i in range(len(st.session_state.temp_doses)):
         c1, c2 = st.columns([3, 1])
@@ -149,19 +198,54 @@ with col1:
         st.session_state.temp_doses.append(dt.time(18, 0))
         st.rerun()
 
-    if st.button("💾 Save Schedule", type="primary"):
-        if name.strip() and days and st.session_state.temp_doses:
-            st.session_state.schedules.append({
-                "name": name.strip(),
-                "days": days,
-                "times": st.session_state.temp_doses.copy(),
-            })
-            get_medicine_color(name.strip())
-            st.success(f"Added **{name.strip()}**")
+    if st.session_state.editing_index is not None:
+        if st.button("💾 Update Schedule", type="primary"):
+            if name.strip() and days and st.session_state.temp_doses:
+                st.session_state.schedules[st.session_state.editing_index] = {
+                    "name": name.strip(),
+                    "days": days,
+                    "times": st.session_state.temp_doses.copy(),
+                }
+                get_medicine_color(name.strip())
+                st.success(f"Updated **{name.strip()}**")
+                st.session_state.temp_doses = [dt.time(8, 0)]
+                st.session_state.editing_index = None
+                st.rerun()
+            else:
+                st.error("Complete all fields.")
+        if st.button("❌ Cancel Edit"):
+            st.session_state.editing_index = None
             st.session_state.temp_doses = [dt.time(8, 0)]
             st.rerun()
-        else:
-            st.error("Complete all fields.")
+    else:
+        if st.button("💾 Save Schedule", type="primary"):
+            if name.strip() and days and st.session_state.temp_doses:
+                st.session_state.schedules.append({
+                    "name": name.strip(),
+                    "days": days,
+                    "times": st.session_state.temp_doses.copy(),
+                })
+                get_medicine_color(name.strip())
+                st.success(f"Added **{name.strip()}**")
+                st.session_state.temp_doses = [dt.time(8, 0)]
+                st.rerun()
+            else:
+                st.error("Complete all fields.")
+    
+    st.subheader("📋 Manage Medicines")
+    for idx, sched in enumerate(st.session_state.schedules):
+        with st.expander(f"{sched['name']} - {', '.join(sched['days'])}"):
+            st.write(f"Times: {', '.join([t.strftime('%I:%M %p') for t in sched['times']])}")
+            col_edit, col_delete = st.columns(2)
+            with col_edit:
+                if st.button("✏️ Edit", key=f"edit_{idx}"):
+                    st.session_state.editing_index = idx
+                    st.rerun()
+            with col_delete:
+                if st.button("🗑️ Delete", key=f"delete_{idx}"):
+                    del st.session_state.schedules[idx]
+                    st.success(f"Deleted {sched['name']}")
+                    st.rerun()
 
 # === Today's Checklist ===
 with col2:
@@ -190,17 +274,16 @@ with col2:
                 mark_taken(dt.date.today(), event["name"], event["time"], checked)
                 st.rerun()  # Immediate update across app
 
-            # Visual feedback
-            color = get_medicine_color(event["name"])
+            # Visual feedback with color codes
             if checked:
-                st.success("✅ Taken", icon="💊")
+                st.success("✅ Taken (Green)", icon="💊")
             elif status == "missed":
-                st.error("❌ Missed")
+                st.error("❌ Missed (Red)")
             elif status == "due":
-                beep()
-                st.warning("🔔 Due now!", icon="⚠️")
+                beep()  # Audio alert
+                st.warning("🔔 Due now! (Yellow)", icon="⚠️")
             else:
-                st.info("⏳ Upcoming", icon="🕐")
+                st.info("⏳ Upcoming (Yellow)", icon="🕐")
 
 # === Weekly View ===
 with col3:
